@@ -11,4 +11,3 @@ class JacksonConfig {
   def objectMapper(builder: Jackson2ObjectMapperBuilder): ObjectMapper =
     builder.modules(DefaultScalaModule).build()
 }
-

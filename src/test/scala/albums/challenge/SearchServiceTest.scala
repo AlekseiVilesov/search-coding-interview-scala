@@ -39,7 +39,9 @@ class SearchServiceTest extends munit.FunSuite {
     "",
     "",
   )
-  val entries = List(entry1, entry2, entry3, entry4, entry5)
+  private val entries = List(entry1, entry2, entry3, entry4, entry5)
+
+  private val entriesWithWordBest = List(entry1, entry2, entry3, entry5)
 
   test("Empty search") {
     assertEquals(
@@ -51,7 +53,7 @@ class SearchServiceTest extends munit.FunSuite {
   test("Search by general keyword") {
     assertEquals(
       searchService.search(entries, "best").items,
-      entries,
+      entriesWithWordBest,
     )
   }
 
@@ -65,28 +67,30 @@ class SearchServiceTest extends munit.FunSuite {
   test("Price facet generation") {
     assertEquals(
       searchService.search(entries, "best").facets.get("price"),
-      Some(List(Facet("5 - 10", 1), Facet("15 - 20", 1))),
+      Some(List(Facet("5 - 10", 2), Facet("15 - 20", 1), Facet("20 - 25", 1))),
     )
   }
 
   test("Year facet generation") {
     assertEquals(
       searchService.search(entries, "best").facets.get("year"),
-      Some(List(Facet("2008", 1), Facet("2002", 1))),
+      Some(List(Facet("1978", 1), Facet("1983", 1), Facet("2002", 1), Facet("2008", 1))),
     )
   }
 
   test("Filter multiple facet values") {
+    val entriesWithWordBestOf2002and2008 = List(entry1, entry2)
+
     val result =
       searchService.search(entries, "best", List("2002", "2008"), List())
 
     assertEquals(
       result.items,
-      entries,
+      entriesWithWordBestOf2002and2008,
     )
     assertEquals(
       result.facets.get("year"),
-      Some(List(Facet("2008", 1), Facet("2002", 1))),
+      Some(List(Facet("1978", 1), Facet("1983", 1), Facet("2002", 1), Facet("2008", 1))),
     )
     assertEquals(
       result.facets.get("price"),
@@ -104,7 +108,7 @@ class SearchServiceTest extends munit.FunSuite {
     )
     assertEquals(
       result.facets.get("year"),
-      Some(List(Facet("2002", 1))),
+      Some(List(Facet("1978", 1), Facet("2002", 1))),
     )
     assertEquals(
       result.facets.get("price"),
@@ -126,11 +130,30 @@ class SearchServiceTest extends munit.FunSuite {
     )
     assertEquals(
       result.facets.get("year"),
-      Some(List(Facet("2008", 1), Facet("2002", 0))),
+      Some(List(Facet("2008", 1))),
     )
     assertEquals(
       result.facets.get("price"),
       Some(List(Facet("5 - 10", 1), Facet("15 - 20", 1))),
+    )
+  }
+
+  test("Year facets remain available after selecting a year") {
+    val result =
+      searchService.search(entries, "best", List("2002"), List())
+
+    assertEquals(result.items, List(entry1))
+
+    assertEquals(
+      result.facets.get("year"),
+      Some(
+        List(
+          Facet("1978", 1),
+          Facet("1983", 1),
+          Facet("2002", 1),
+          Facet("2008", 1),
+        ),
+      ),
     )
   }
 }
