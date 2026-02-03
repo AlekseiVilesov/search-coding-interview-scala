@@ -9,15 +9,15 @@ import java.util.Locale
 @Service
 class SearchService {
 
-  private val YearFacetKey  = "year"
+  private val YearFacetKey = "year"
   private val PriceFacetKey = "price"
 
   def search(
-              entries: List[Entry],
-              query: String,
-              year: List[String] = List.empty,
-              price: List[String] = List.empty,
-            ): Results = {
+      entries: List[Entry],
+      query: String,
+      year: List[String] = List.empty,
+      price: List[String] = List.empty,
+  ): Results = {
 
     val q = query.trim.toLowerCase(Locale.ROOT)
     val yearSet = year.toSet
@@ -50,7 +50,7 @@ class SearchService {
     Results(
       items = items,
       facets = Map(
-        YearFacetKey  -> yearFacets(yearFacetBase),
+        YearFacetKey -> yearFacets(yearFacetBase),
         PriceFacetKey -> priceFacets(priceFacetBase, buckets),
       ),
       query = query,
@@ -70,9 +70,9 @@ class SearchService {
       .sortBy(_.value)
 
   private def priceFacets(
-                           base: List[Entry],
-                           buckets: List[PriceBucket],
-                         ): List[Facet] =
+      base: List[Entry],
+      buckets: List[PriceBucket],
+  ): List[Facet] =
     buckets
       .map(b => Facet(b.label, Integer.valueOf(base.count(e => b.contains(e.price)))))
       .filter(_.count.intValue() > 0)

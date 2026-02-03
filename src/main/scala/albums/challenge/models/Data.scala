@@ -10,7 +10,7 @@ case class Data(feed: Data.Feed = Data.Feed()) {
         entry.price.label.dropWhile(ch => !ch.isDigit && ch != '-').toFloat,
         entry.releaseDate.label,
         entry.link.attributes.href,
-        entry.images.headOption.map(_.label).getOrElse("")
+        entry.images.headOption.map(_.label).getOrElse(""),
       )
     }
 }
@@ -32,4 +32,3 @@ object Data {
     case class Attributes(href: String)
   }
 }
-
