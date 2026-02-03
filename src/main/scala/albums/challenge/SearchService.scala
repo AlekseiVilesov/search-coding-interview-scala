@@ -4,42 +4,54 @@ import albums.challenge.models.{Entry, Facet, PriceBucket, Results}
 import org.springframework.stereotype.Service
 
 import java.time.OffsetDateTime
+import java.util.Locale
 
 @Service
 class SearchService {
+
+  private val YearFacetKey  = "year"
+  private val PriceFacetKey = "price"
+
   def search(
-      entries: List[Entry],
-      query: String,
-      year: List[String] = List.empty,
-      price: List[String] = List.empty,
-  ): Results = {
+              entries: List[Entry],
+              query: String,
+              year: List[String] = List.empty,
+              price: List[String] = List.empty,
+            ): Results = {
+
+    val q = query.trim.toLowerCase(Locale.ROOT)
+    val yearSet = year.toSet
+    val priceSet = price.toSet
+
     val matched =
-      entries.filter(_.title.toLowerCase.contains(query.toLowerCase))
+      if (q.isEmpty) entries
+      else entries.filter(e => e.title.toLowerCase(Locale.ROOT).contains(q))
 
     val buckets = defaultPriceBuckets()
+    val selectedBuckets = buckets.filter(b => priceSet.contains(b.label))
 
-    val selectedBuckets = buckets.filter(b => price.contains(b.label))
+    def yearOk(e: Entry): Boolean =
+      yearSet.isEmpty || yearSet.contains(yearFrom(e.releaseDate))
+
+    def priceOk(e: Entry): Boolean =
+      priceSet.isEmpty || selectedBuckets.exists(_.contains(e.price))
 
     val items =
-      matched.filter { e =>
-        val yearOk = year.isEmpty || year.contains(yearFrom(e.releaseDate))
-        val priceOk = price.isEmpty || selectedBuckets.exists(_.contains(e.price))
-        yearOk && priceOk
-      }
+      matched.filter(e => yearOk(e) && priceOk(e))
 
     val priceFacetBase =
-      if (year.nonEmpty) matched.filter(e => year.contains(yearFrom(e.releaseDate)))
+      if (yearSet.nonEmpty) matched.filter(e => yearSet.contains(yearFrom(e.releaseDate)))
       else matched
 
     val yearFacetBase =
-      if (price.nonEmpty) matched.filter(e => selectedBuckets.exists(_.contains(e.price)))
+      if (priceSet.nonEmpty) matched.filter(e => selectedBuckets.exists(_.contains(e.price)))
       else matched
 
     Results(
       items = items,
       facets = Map(
-        "year" -> yearFacets(yearFacetBase),
-        "price" -> priceFacets(priceFacetBase, buckets),
+        YearFacetKey  -> yearFacets(yearFacetBase),
+        PriceFacetKey -> priceFacets(priceFacetBase, buckets),
       ),
       query = query,
     )
@@ -55,16 +67,14 @@ class SearchService {
       .mapValues(xs => Integer.valueOf(xs.size))
       .map { case (y, c) => Facet(y, c) }
       .toList
-      .sortBy(_.value) // тесты у тебя сейчас ожидают ascending; UI можно и descending
+      .sortBy(_.value)
 
   private def priceFacets(
-      base: List[Entry],
-      buckets: List[PriceBucket],
-  ): List[Facet] =
+                           base: List[Entry],
+                           buckets: List[PriceBucket],
+                         ): List[Facet] =
     buckets
-      .map { b =>
-        Facet(b.label, Integer.valueOf(base.count(e => b.contains(e.price))))
-      }
+      .map(b => Facet(b.label, Integer.valueOf(base.count(e => b.contains(e.price)))))
       .filter(_.count.intValue() > 0)
 
   private def defaultPriceBuckets(step: Float = 5f, upTo: Float = 25f): List[PriceBucket] = {
