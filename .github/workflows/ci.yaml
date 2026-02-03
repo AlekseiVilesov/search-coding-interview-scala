@@ -17,6 +17,11 @@ jobs:
           distribution: 'temurin'
           cache: 'sbt'
 
+      - name: Install sbt (Coursier)
+        uses: coursier/setup-action@v1
+        with:
+          apps: sbt
+
       - name: Check formatting
         run: sbt scalafmtCheckAll
 
