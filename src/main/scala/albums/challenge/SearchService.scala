@@ -12,6 +12,11 @@ class SearchService {
   private val YearFacetKey = "year"
   private val PriceFacetKey = "price"
 
+  private val buckets: List[PriceBucket] = defaultPriceBuckets()
+
+  private val bucketsByLabel: Map[String, PriceBucket] =
+    buckets.map(b => b.label -> b).toMap
+
   def search(
       entries: List[Entry],
       query: String,
@@ -27,8 +32,7 @@ class SearchService {
       if (q.isEmpty) entries
       else entries.filter(e => e.title.toLowerCase(Locale.ROOT).contains(q))
 
-    val buckets = defaultPriceBuckets()
-    val selectedBuckets = buckets.filter(b => priceSet.contains(b.label))
+    val selectedBuckets = price.iterator.flatMap(bucketsByLabel.get).toList
 
     def yearOk(e: Entry): Boolean =
       yearSet.isEmpty || yearSet.contains(yearFrom(e.releaseDate))
@@ -61,21 +65,20 @@ class SearchService {
     OffsetDateTime.parse(date).getYear.toString
 
   private def yearFacets(base: List[Entry]): List[Facet] =
-    base
-      .groupBy(e => yearFrom(e.releaseDate))
-      .view
-      .mapValues(xs => Integer.valueOf(xs.size))
-      .map { case (y, c) => Facet(y, c) }
+    base.iterator
+      .map(e => yearFrom(e.releaseDate))
+      .toList
+      .groupMapReduce(identity)(_ => 1)(_ + _)
+      .iterator
+      .map { case (year, count) => Facet(year, Int.box(count)) }
       .toList
       .sortBy(_.value)
 
-  private def priceFacets(
-      base: List[Entry],
-      buckets: List[PriceBucket],
-  ): List[Facet] =
-    buckets
-      .map(b => Facet(b.label, Integer.valueOf(base.count(e => b.contains(e.price)))))
+  private def priceFacets(base: List[Entry], buckets: List[PriceBucket]): List[Facet] =
+    buckets.iterator
+      .map { b => Facet(b.label, Int.box(base.iterator.count(e => b.contains(e.price)))) }
       .filter(_.count.intValue() > 0)
+      .toList
 
   private def defaultPriceBuckets(step: Float = 5f, upTo: Float = 25f): List[PriceBucket] = {
     val bounded =
