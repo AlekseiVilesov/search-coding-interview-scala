@@ -33,9 +33,7 @@ class SearchService {
           entries
         case q =>
           val qLower = q.toLowerCase(Locale.ROOT)
-          entries.filter(e =>
-            e.title.toLowerCase(Locale.ROOT).contains(qLower)
-          )
+          entries.filter(e => e.title.toLowerCase(Locale.ROOT).contains(qLower))
       }
 
     val selectedBuckets = price.iterator.flatMap(bucketsByLabel.get).toList
